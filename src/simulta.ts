@@ -1,7 +1,7 @@
 import { parseArgs } from "@std/cli";
 import { execCommand } from "./process.ts";
 import {
-  concatReadableStreams,
+  mergeReadableStreams,
   TextLineStream,
   toTransformStream,
 } from "@std/streams";
@@ -85,13 +85,14 @@ export const simulta = async (params: {
       .pipeThrough(new TextEncoderStream());
   };
 
-  await concatReadableStreams(
-    ...processes.map((process, i) => pipeline(process.stdout, { index: i })),
-  ).pipeTo(params.stdout);
-
-  await concatReadableStreams(
-    ...processes.map((process, i) => pipeline(process.stderr, { index: i })),
-  ).pipeTo(params.stderr);
+  await Promise.all([
+    mergeReadableStreams(
+      ...processes.map((process, i) => pipeline(process.stdout, { index: i })),
+    ).pipeTo(params.stdout),
+    mergeReadableStreams(
+      ...processes.map((process, i) => pipeline(process.stderr, { index: i })),
+    ).pipeTo(params.stderr),
+  ]);
 
   const results = await Promise.allSettled(
     processes.map((process) => process.status),

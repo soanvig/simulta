@@ -3,9 +3,10 @@
   "license": "LGPLv3",
   "description": "Run multiple commands simultanously",
   "exports": "./src/simulta.ts",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "tasks": {
-    "start": "deno run --allow-env --allow-run ./src/simulta.ts \"cat test/a.txt\" \"cat test/b.txt\""
+    "test:simple": "deno run --allow-env --allow-run ./src/simulta.ts \"cat test/a.txt\" \"cat test/b.txt\"",
+    "test:sleep": "deno run --allow-env --allow-run ./src/simulta.ts \"sh test/scriptA.sh\" \"sh test/scriptB.sh\""
   },
   "publish": {
     "include": [
