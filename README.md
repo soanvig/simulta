@@ -8,13 +8,14 @@ CLI
 
 ```sh
 $ deno run --allow-run --allow-env=SHELL \
-    jsr:@koteya/simulta --prefix --names "commandA,commandB" \
-    "echo Hello" \
+    jsr:@koteya/simulta --prefix --names "command,otherCommand" \
+    "echo -e Hello\\\nFrom" \
     "echo World"
     
 # Outputs:
-# [commandA] Hello
-# [commandB] World
+# [command]      │ Hello
+#                │ From
+# [otherCommand] │ World
 ```
 
 Programmatic
@@ -25,7 +26,7 @@ import { simulta } from 'jsr:@koteya/simulta';
 await simulta({
   commands: ['echo Hello', 'echo World'],
   prefix: true,
-  names: ['commandA', 'commandB'],
+  names: ['command', 'otherCommand'],
   stdout: Deno.stdout.writable,
   stderr: Deno.stderr.writable,
 });

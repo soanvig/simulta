@@ -1,10 +1,6 @@
 import { parseArgs } from "@std/cli";
 import { execCommand } from "./process.ts";
-import {
-  mergeReadableStreams,
-  TextLineStream,
-  toTransformStream,
-} from "@std/streams";
+import { mergeReadableStreams, toTransformStream } from "@std/streams";
 
 /** Result of the execution - if execution started and all commands have succeeded (exit code 0) */
 export type SimultaResult = { success: true } | {
@@ -15,11 +11,27 @@ export type SimultaResult = { success: true } | {
 const resetEscapeCode = "\x1b[0m";
 
 const outputTransformer = (params: { prefix: string | null }) => {
-  const prefix = params.prefix ? `[${params.prefix}] ` : "";
+  const firstLinePrefix = params.prefix ? `${params.prefix} │ ` : "";
+  const otherLinePrefix = params.prefix
+    ? `${" ".repeat(params.prefix.length)} │ `
+    : "";
 
   return async function* (stream: ReadableStream<string>) {
-    for await (const line of stream) {
-      yield `${prefix}${line}${resetEscapeCode}\n`;
+    for await (const chunk of stream) {
+      const lines = chunk.split("\n").filter((line) => line.length !== 0);
+      if (lines.length === 0) {
+        continue;
+      }
+
+      let output = "";
+
+      output += `${firstLinePrefix}${lines[0]}${resetEscapeCode}`;
+      for (let i = 1; i < lines.length; i += 1) {
+        output += `\n${otherLinePrefix}${lines[i]}${resetEscapeCode}`;
+      }
+      output += "\n";
+
+      yield output;
     }
   };
 };
@@ -56,17 +68,17 @@ export const simulta = async (params: {
 
   const processes = params.commands.map(execCommand);
 
-  const prefixes = params.commands.map((_cmd, i) => {
-    if (!params.prefix) {
-      return null;
-    }
+  const commandNames = params.names
+    ? params.names
+    : params.commands.map((_cmd, i) => i.toString());
+  const longestCommandNameLength = Math.max(
+    ...commandNames.map((name) => name.length),
+    0,
+  );
 
-    if (params.names) {
-      // correctness ensured by checking length of names against commands
-      return params.names.at(i)!;
-    }
-
-    return i.toString();
+  const prefixes = commandNames.map((name) => {
+    // +2 for braces [ ]
+    return `[${name}]`.padEnd(longestCommandNameLength + 2, " ");
   });
 
   const pipeline = (
@@ -75,11 +87,11 @@ export const simulta = async (params: {
   ): ReadableStream => {
     return stream
       .pipeThrough(new TextDecoderStream())
-      .pipeThrough(new TextLineStream())
+      // .pipeThrough(new TextLineStream())
       .pipeThrough(
         toTransformStream(outputTransformer({
           // correctness ensured by checking length of names against commands
-          prefix: prefixes.at(payload.index)!,
+          prefix: params.prefix ? prefixes.at(payload.index)! : null,
         })),
       )
       .pipeThrough(new TextEncoderStream());

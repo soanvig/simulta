@@ -55,9 +55,18 @@ Deno.test("spawns two commands and writes to stdout", async () => {
   const stderrResult = textDecoder.decode(stderr.bytes());
 
   expect(result).toEqual({ success: true });
-  expect(stdoutResult).toEqual(
-    `foobar${resetEscapeCode}\nbarfoo${resetEscapeCode}\n`,
-  );
+
+  // order is not guaranteed
+  if (stdoutResult.startsWith("foo")) {
+    expect(stdoutResult).toEqual(
+      `foobar${resetEscapeCode}\nbarfoo${resetEscapeCode}\n`,
+    );
+  } else {
+    expect(stdoutResult).toEqual(
+      `barfoo${resetEscapeCode}\nfoobar${resetEscapeCode}\n`,
+    );
+  }
+
   expect(stderrResult).toEqual(``);
 });
 
@@ -120,8 +129,8 @@ Deno.test("prefixes stdout and stderr command output using index", async () => {
   const stderrResult = textDecoder.decode(stderr.bytes());
 
   expect(result).toEqual({ success: true });
-  expect(stdoutResult).toEqual(`[0] foobar${resetEscapeCode}\n`);
-  expect(stderrResult).toEqual(`[1] barfoo${resetEscapeCode}\n`);
+  expect(stdoutResult).toEqual(`[0] │ foobar${resetEscapeCode}\n`);
+  expect(stderrResult).toEqual(`[1] │ barfoo${resetEscapeCode}\n`);
 });
 
 Deno.test("prefixes stdout and stderr command output using given names", async () => {
@@ -133,15 +142,15 @@ Deno.test("prefixes stdout and stderr command output using given names", async (
     stdout: stdout.writable,
     stderr: stderr.writable,
     prefix: true,
-    names: ["echo1", "echo2"],
+    names: ["echo1", "echo2long"],
   });
 
   const stdoutResult = textDecoder.decode(stdout.bytes());
   const stderrResult = textDecoder.decode(stderr.bytes());
 
   expect(result).toEqual({ success: true });
-  expect(stdoutResult).toEqual(`[echo1] foobar${resetEscapeCode}\n`);
-  expect(stderrResult).toEqual(`[echo2] barfoo${resetEscapeCode}\n`);
+  expect(stdoutResult).toEqual(`[echo1]     │ foobar${resetEscapeCode}\n`);
+  expect(stderrResult).toEqual(`[echo2long] │ barfoo${resetEscapeCode}\n`);
 });
 
 Deno.test("fails if names.length > commands.length", async () => {
